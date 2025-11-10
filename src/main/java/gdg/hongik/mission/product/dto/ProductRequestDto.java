@@ -1,4 +1,4 @@
-package com.example.store.dto;
+package gdg.hongik.mission.product.dto;
 
 import lombok.AllArgsConstructor;
 import lombok.Data;
