@@ -1,6 +1,7 @@
 package gdg.hongik.mission.product.service;
 
 import gdg.hongik.mission.product.dto.*;
+import gdg.hongik.mission.product.entity.Product;
 import gdg.hongik.mission.product.repository.ProductRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
@@ -14,39 +15,61 @@ public class ProductService {
 
     private final ProductRepository productRepository;
 
+    private ProductDto toDto(Product product) {
+        return new ProductDto(
+                product.getId(),
+                product.getName(),
+                product.getPrice(),
+                product.getStock()
+        );
+    }
+
     public ProductDto getByName(String name) {
-        ProductDto dto = productRepository.findByName(name);
-        return dto;
+        Product product = productRepository.findByName(name)
+                .orElseThrow(() -> new IllegalArgumentException("상품을 찾을 수 없습니다. name=" + name));
+        return toDto(product);
     }
 
     public ProductDto create(ProductRequestDto req) {
-        ProductDto dto = new ProductDto(
-                null,
-                req.getName(),
-                req.getPrice(),
-                req.getStock()
-        );
-        return  productRepository.save(dto);
+        Product product = Product.builder()
+                .name(req.getName())
+                .price(req.getPrice())
+                .stock(req.getStock())
+                .build();
+
+        Product saved = productRepository.save(product);
+        return toDto(saved);
     }
 
     public ProductDto increaseStock(Long id, ProductUpdateDto req) {
-        ProductDto dto = productRepository.findById(id);
-        dto.setStock(dto.getStock() + req.getQuantity());
-        return productRepository.save(dto);
+        Product product = productRepository.findById(id)
+                .orElseThrow(() -> new IllegalArgumentException("상품을 찾을 수 없습니다. id=" + id));
+
+        product.setStock(product.getStock() + req.getQuantity());
+        Product saved = productRepository.save(product);
+        return toDto(saved);
     }
 
     public ProductDto decreaseStock(Long id, ProductUpdateDto req) {
-        ProductDto dto = productRepository.findById(id);
-        int newStock = dto.getStock() - req.getQuantity();
-        dto.setStock(newStock);
-        return productRepository.save(dto);
+        Product product = productRepository.findById(id)
+                .orElseThrow(() -> new IllegalArgumentException("상품을 찾을 수 없습니다. id=" + id));
+
+        int newStock = product.getStock() - req.getQuantity();
+        if (newStock < 0) {
+            throw new IllegalArgumentException("재고가 부족합니다. 현재 재고=" + product.getStock());
+        }
+
+        product.setStock(newStock);
+        Product saved = productRepository.save(product);
+        return toDto(saved);
     }
+
     public PurchaseDto purchase(PurchaseDto req) {
         return new PurchaseDto(10000, req.getItems());
     }
 
     public Map<String, Object> deleteProducts(ProductDeleteRequestDto req) {
-        productRepository.deleteAllByIds(req.getIds());
+        productRepository.deleteAllById(req.getIds());
         return Map.of("totalProducts", req.getIds().size());
     }
 }
